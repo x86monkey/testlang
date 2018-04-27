@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(executable
+ ((name lazylambda)
+ (preprocess (pps (ppx_sexp_conv)))
+ (flags (:standard -w -9+27-30-32-40@8
+                    -safe-string
+                    -linkall
+                    -g))
+ (libraries (llvm llvm.executionengine ctypes core sexplib))))
