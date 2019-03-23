@@ -218,8 +218,7 @@ let rec compile = function
                           }
 
 
-
-let () = let filename = Sys.argv.(1) in
+let compile_file filename = 
          let s = In_channel.read_all filename |> Sexp.of_string in
          let expr = parse_sexp s in
          let con = compile expr in
@@ -281,4 +280,8 @@ let () = let filename = Sys.argv.(1) in
          let engine = Llvm_executionengine.create llm in
          let f = Llvm_executionengine.get_function_address "main" ctyp engine in
          f () |> ignore
+
+
+let () = let filename = Sys.argv.(1) in
+         compile_file filename
            
