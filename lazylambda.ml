@@ -101,7 +101,7 @@ let unify x llb = build_bitcast x unified_ptr "" llb
 
 let build_num x llb = let pnum = build_new num_t llb in
                       let _ = build_store num_tag (tag_ref pnum llb) llb in
-                      let _ = build_store (const_i64_t x) (num_ref pnum llb) llb in
+                      let _ = build_store x (num_ref pnum llb) llb in
                       let unified = unify pnum llb in
                       return unified llb
                                    
@@ -168,9 +168,8 @@ let rec parse_sexp = function
                     | _ -> String.concat ["parse error: "; Sexp.to_string (Sexp.List l)] |> failwith)
                      
                     
-
 let rec compile = function
-  | Num x -> { unbound = []; compile = fun _ llb -> build_num x llb }
+  | Num x -> { unbound = []; compile = fun _ llb -> build_num (const_i64_t x) llb }
   | Var x -> { unbound = [x]; compile = fun args llb ->
                                         match args with 
                                         | [getter] -> 
@@ -216,6 +215,20 @@ let rec compile = function
                                       let _ = build_ret body body_builder in
                                       build_lambda f scope llb
                           }
+
+let build_load_num addr llb = let num = build_bitcast addr num_ptr "" llb in
+                              let n_ref = num_ref num llb in
+                              build_load n_ref "" llb;;
+         
+let build_binop build_expr llb = let outer_builder, outer = lambda_entry () in
+                                 let arg = arg_getter outer llb in
+                                 let inner_builder, inner = lambda_entry () in
+                                 let inner_arg = arg_getter inner llb in
+                                 let outer_scope = [arg] in
+                                 let inner_scope, getters = make_new_scope inner outer_scope llb in
+                                 match getters with
+                                 | [ outer_arg ] -> undefined ()
+                                 | _ -> failwith "Bug: there should be exactly one getter for outer arg";;
 
 
 let compile_file filename = 
@@ -269,9 +282,7 @@ let compile_file filename =
          let str = build_global_stringptr "result:  %ld\n" "" llb in
          let str = build_gep str [| zero |] "" llb in
          let res = build_call evaluator [| e |] "" llb in
-         let num = build_bitcast res num_ptr "" llb in
-         let n_ref = num_ref num llb in
-         let n = build_load n_ref "" llb in
+         let n = build_load_num res llb in
          build_call printf [| str; n |] "" llb |> ignore;
          build_ret zero llb |> ignore;
          print_module "test.ll" llm;
